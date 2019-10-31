@@ -1,4 +1,4 @@
-# hello-world-stats-packages-OliviaNye
+# hello-world-stats-packages
 
 git exercise for stats packages in public health
 

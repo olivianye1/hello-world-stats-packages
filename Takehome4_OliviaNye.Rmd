@@ -1,0 +1,146 @@
+---
+title: 'Take home #4 - R: Analysis of the ghana_bednet dataset'
+author: "Olivia Nye"
+---
+
+
+```{r setup}
+# loading required libraries ----
+library(dslabs)
+library(tidyverse)
+library(ggplot2)
+library(dplyr)
+library(Hmisc)
+
+```
+
+```{r load_data} 
+#readr from tidyverse instead??
+df <- read_csv("/Users/olivianye/Downloads/ghana_bednet.csv")
+
+class(df)
+df$follyr[5743] <- 1.0
+df$sex[df$sex == "1"] <- "F"
+df$sex[df$sex == "0"] <- "M"
+df$follyr[df$follyr < 0] <- NA
+
+describe(df)
+
+
+```
+
+```{r}
+#Question #3: proportion of male participants: 13305/26342
+sexTable <- table(df$sex)
+addmargins(sexTable)
+round(100*prop.table(sexTable), digits = 2)
+```
+
+```{r}
+#Question #4: 8395.184 years
+femaleInter <- df  %>% 
+             filter(sex == "F" & bednet == 1) %>%
+            summarise(femaleInter = sum(follyr, na.rm = TRUE))
+
+femaleInter
+```
+
+```{r}
+#QUESTION 5: 9/370 kids in cluster 52 died
+
+#make dataset of only kids in cluster 52
+df52 <- filter(df, cluster == 52)
+#view this dataset
+df52
+#make frequency table for outcome variable in this filtered dataset
+outcomes52 <- table(df52$outcome)
+#add total to table
+addmargins(outcomes52)
+#view frequencies as precents rounded to 2 decimal points
+round(100*prop.table(outcomes52), digits = 2)
+```
+
+```{r}
+#QUESTION 6
+mean(df$agemn) #mean age at enrollment is 25.29 months 
+
+sd(df$agemn) #standard deviation of enrollment age is 18.02 months
+
+```
+
+```{r}
+#QUESTION 7 
+
+# control group
+#control <- filter(df, df$bednet == 0)
+control
+
+#controlDeathCount <- length(control$outcome == 1)
+controlDeathCount #13029 died
+
+controlYears <- df  %>% 
+             filter(bednet == 0) %>%
+            summarise(controlYears = sum(follyr, na.rm = TRUE))
+controlYears #--> 16493.83	years
+
+
+controlMortRate <- 100*(controlDeathCount / controlYears) 
+controlMortRate #78.99% mortality rate among control group 
+
+#intervention group
+inter <- filter(df, df$bednet == 1)
+inter
+
+interDeathCount <- length(inter$outcome == 1)
+interDeathCount #13313 died
+
+interYears <- df  %>% 
+             filter(bednet == 1) %>%
+            summarise(interYears = sum(follyr, na.rm = TRUE))
+
+interYears #16841.04	years
+
+interMortRate <- 100*(interDeathCount / interYears) 
+interMortRate #79.05% mortality rate among control group 
+
+```
+
+
+```{r}
+#Question 8 -- bar plot
+
+# Grouped Bar Plot
+#create count table
+counts <- table(df$outcome, df$cluster)
+counts
+#convert 0 and 1 levels of outcome variable to text
+rownames(counts)[rownames(counts) == 0] = "Survived"
+rownames(counts)[rownames(counts) == 1] = "Died"
+
+barplot(counts, main="Outcome Proportions by Cluster",
+  xlab="Cluster", ylab="Number of Participants", col=c("darkblue","red"),
+  legend = rownames(counts), beside=TRUE)
+```
+```{r}
+#question 9 -- linlogistic regression
+
+reg <- glm(outcome ~ bednet, family = binomial(link = 'logit'), data = df)
+
+summary(reg)
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

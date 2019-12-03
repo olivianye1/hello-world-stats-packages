@@ -1,6 +1,7 @@
 ---
 title: 'Take home #4 - R: Analysis of the ghana_bednet dataset'
 author: "Olivia Nye"
+output: html_notebook
 ---
 
 
@@ -16,17 +17,18 @@ library(Hmisc)
 
 ```{r load_data} 
 #readr from tidyverse instead??
-df <- read_csv("/Users/olivianye/Downloads/ghana_bednet.csv")
+df <- read_csv("ghana_bednet.csv")
 
 class(df)
 df$follyr[5743] <- 1.0
 df$sex[df$sex == "1"] <- "F"
 df$sex[df$sex == "0"] <- "M"
+#I suggest also cleaning up one missing value, denoted as . and changing it to NA (standard R notation for missing values) as 
 df$follyr[df$follyr < 0] <- NA
 
 describe(df)
 
-
+#We see your output below for answers to questions 1 & 2; however, please write-out answers in the document as well.
 ```
 
 ```{r}
@@ -34,6 +36,8 @@ describe(df)
 sexTable <- table(df$sex)
 addmargins(sexTable)
 round(100*prop.table(sexTable), digits = 2)
+
+#it is great you performed your operations as part of your script (as it avoid introducing human error); do note that your proportions were also provided above after you ran your describe command
 ```
 
 ```{r}
@@ -72,31 +76,32 @@ sd(df$agemn) #standard deviation of enrollment age is 18.02 months
 #QUESTION 7 
 
 # control group
-#control <- filter(df, df$bednet == 0)
+control <- filter(df, df$bednet == 0)
+#be careful as you made your above command into a comment 
 control
 
-#controlDeathCount <- length(control$outcome == 1)
-controlDeathCount #13029 died
+controlDeathCount <- filter(control, control$outcome == 1) #13029 died
 
 controlYears <- df  %>% 
              filter(bednet == 0) %>%
             summarise(controlYears = sum(follyr, na.rm = TRUE))
 controlYears #--> 16493.83	years
+#time contributed by participants in the non-intervention areas is correct; however there were 461 deaths (not 13029)
 
+#controlMortRate <- 100*(controlDeathCount/controlYears) # control Death count and Control years are data.frames, which dont make sense to do arithmetic with. 
 
-controlMortRate <- 100*(controlDeathCount / controlYears) 
-controlMortRate #78.99% mortality rate among control group 
+#controlMortRate #78.99% mortality rate among control group #since the above doesnt run this objet does not exist. 
 
 #intervention group
 inter <- filter(df, df$bednet == 1)
 inter
 
-interDeathCount <- length(inter$outcome == 1)
+interDeathCount <- length(inter$outcome == 1) # could use sum This just gives the length of logical vector for if inter$outcome == 1 wihc is the same as the length of inter$outcome
 interDeathCount #13313 died
 
 interYears <- df  %>% 
              filter(bednet == 1) %>%
-            summarise(interYears = sum(follyr, na.rm = TRUE))
+            summarise(interYears = sum(follyr, na.rm = TRUE)) # this approach would have worked above. 
 
 interYears #16841.04	years
 
@@ -120,6 +125,7 @@ rownames(counts)[rownames(counts) == 1] = "Died"
 barplot(counts, main="Outcome Proportions by Cluster",
   xlab="Cluster", ylab="Number of Participants", col=c("darkblue","red"),
   legend = rownames(counts), beside=TRUE)
+#you used counts but the questions asks for proportions on the y-axis
 ```
 ```{r}
 #question 9 -- linlogistic regression
@@ -130,9 +136,9 @@ summary(reg)
 
 ```
 
+#you forgot to answer question 10 which is the interpretation of the logistic regression in question 9
 
-
-
+# no preamble per se and no output statment in YAML header.
 
 
 

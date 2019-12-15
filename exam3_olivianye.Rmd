@@ -1,0 +1,340 @@
+---
+title: "Exam 3"
+author: "Olivia Nye"
+due date: December 15, 2019
+description: Analyzes nola_crime_2018, iris, and mtcars dataset to show fluency in
+  R skills.
+---
+
+```{r setup}
+#clear workspace
+rm(list = ls())
+
+# loading required libraries 
+library(dslabs)
+library(tidyverse)
+library(ggplot2)
+library(dplyr)
+library(Hmisc)
+library(stringr)
+library(formattable)
+library(ggrepel)
+library(datasets)
+library(maps)
+library(ggmap)
+library(rgdal)
+library(RColorBrewer)
+library(rgeos)
+```
+
+```{r load_data} 
+# Questions 1-3
+
+df <- read_csv("/Users/olivianye/Downloads/nola_crime_2018.csv")
+#describe(df)
+
+#Question 1: There are 9970 observations in the nola_crime_2018.csv dataset.
+
+#Question 2: There are 24 variables in the nola_crime_2018.csv dataset.
+
+#Question 3: There are 9384 unique item numbers in the nola_crime_2018.csv dataset.
+
+``` 
+```{r}
+#Question 4 -- Only 1 aggravated crime took place in the Irish Channel Neighborhood.
+
+#create a dataframe that only includes aggravated crimes
+aggDf <- df %>% filter(str_detect(df$Signal_Description, "AGGRAVATED"))
+#filter further to create a df that only includes the aggravated crimes in the irish channel neighborhood
+irishAggDf <- aggDf %>% filter(str_detect(aggDf$GNOCDC_LAB, "IRISH CHANNEL"))
+describe(irishAggDf)
+irishAggDf
+#Question 4: Only 1 aggravated crime took place in the Irish Channel Neighborhood.
+```
+
+```{r}
+#Question 5 -- Out of all neighborhoods, the French Quarter had the highest number of distinct crime reports (670), followed by Little Woods (595).
+
+distinctDf <- df %>% filter(duplicated(df$Item_Number) ==FALSE)
+neighborhoodTab <- table(distinctDf$GNOCDC_LAB)
+ordered <- sort(neighborhoodTab, decreasing=TRUE)
+#ordered
+#Question 5: Out of all neighborhoods, the French Quarter had the highest number of distinct crime reports (670), followed by Little Woods (595).
+
+
+```
+
+```{r} 
+#QUESTION 6 -- calculates the crime rate for all of the neighborhoods and shows this info in a table
+
+#convert neighborhood crime frequency table to a dataframe we can work with
+countDf <- as.data.frame(neighborhoodTab)
+countDf$Var1 <- as.character(countDf$Var1)
+
+#append the crime count factor from the countDf table to the rest of the data, matching on neighborhood
+distinctCountDf <- left_join(distinctDf, countDf, by=c("GNOCDC_LAB"= "Var1"))
+names(distinctCountDf)[25] <- "neighborhoodCrimeCount"
+#distinctCountDf
+
+#only consider each neighborhood once
+distinctNeighborhoodDf <- distinctCountDf %>%  
+filter(duplicated(distinctCountDf$GNOCDC_LAB) ==FALSE)
+
+#instantiate crime rare column
+distinctNeighborhoodDf$Crime_Rate <- 0
+#calculate neighborhood crime rates per 1000 persons
+distinctNeighborhoodDf$Crime_Rate <- distinctNeighborhoodDf$neighborhoodCrimeCount / (distinctNeighborhoodDf$pop) * 1000
+
+#subset just neighborhood and crime rate factors into a separate df
+myVars <- c("GNOCDC_LAB", "Crime_Rate")
+neighborhoodRateDf <- distinctNeighborhoodDf[myVars]
+#Shows Neighborhood Crime Rate Table as a nicely formatted table
+formattable(neighborhoodRateDf)
+
+
+```
+
+```{r}
+#QUESTION #7 -- Little Woods is the largest neighborhood in the dataset by population, with a population of 44947 people
+
+neighborhoodPopVars <- c("GNOCDC_LAB", "pop")
+neighborhoodPop <- distinctNeighborhoodDf[neighborhoodPopVars]
+#neighborhoodPop
+#popSorted <- neighborhoodPop[order(-pop)]#, decreasing = TRUE)
+popSorted <- sort(neighborhoodPop$pop, decreasing=TRUE)
+popSorted #highest pop is 44947
+
+neighborhoodPop %>% filter(neighborhoodPop$pop == 44947) 
+#the neighborhood with the highest pop (44947) is Little Woods. 
+
+```
+```{r}
+#QUESTION #8 - Lakewood, which is the neighborhood with the lowest crime rate (0.7148474), has a population of size 13989 and 10 unique crimes. 
+
+#clean up NAs 
+neighborhoodRateDf <- na.omit(neighborhoodRateDf)
+
+#calculate lowest neighborhood crime rate
+minRate <- min(neighborhoodRateDf$Crime_Rate) # The lowest crime rate is 0.7148474
+
+#find the neighborhood with that lowest crime rate
+lowestNeighborhood <- neighborhoodRateDf %>% filter(neighborhoodRateDf$Crime_Rate == minRate) 
+lowestNeighborhood
+#Lakewood is the neighborhood with the lowest crime rate (0.7148474)
+
+lowestNeighborhoodPop <- neighborhoodPop %>% filter(neighborhoodPop$GNOCDC_LAB == "LAKEWOOD") 
+lowestNeighborhoodPop #Lakewood has a population of 13989 people
+
+lakewoodCount <- countDf %>% filter(countDf$Var1 == "LAKEWOOD")
+lakewoodCount #lakewood had only 10 unique crimes.
+```
+
+
+```{r}
+#QUESTION 9 -- calculates the crime rate ratio for each neighborhood using Lake Wood as the reference
+
+lakewoodRate <- minRate
+neighborhoodRateDf$rateRatio = 0
+
+neighborhoodRateDf$rateRatio <- neighborhoodRateDf$Crime_Rate / lakewoodRate
+ratioCols <- c("GNOCDC_LAB", "rateRatio")
+rate_ratio_all_lakewood <- neighborhoodRateDf[ratioCols]
+rate_ratio_all_lakewood
+```
+
+
+```{r}
+#QUESTION 10 -- calculates the crime rate ratio for each neighborhood using the French Quarter as the reference
+
+aggDistinctDf <- distinctDf %>% filter(str_detect(distinctDf$Signal_Description, "AGGRAVATED"))
+
+aggNeighborhoodTab <- table(aggDistinctDf$GNOCDC_LAB)
+
+aggcountDf <- as.data.frame(neighborhoodTab)
+aggcountDf$Var1 <- as.character(aggcountDf$Var1)
+
+#append the crime count factor from the countDf table to the rest of the data, matching on neighborhood
+aggdistinctCountDf <- left_join(aggDistinctDf, aggcountDf, by=c("GNOCDC_LAB"= "Var1"))
+names(aggdistinctCountDf)[25] <- "neighborhoodAggCrimeCount"
+
+#only consider each neighborhood once
+aggdistinctNeighborhoodDf <- aggdistinctCountDf %>%  
+filter(duplicated(aggdistinctCountDf$GNOCDC_LAB) ==FALSE)
+
+#instantiate crime rate column
+aggdistinctNeighborhoodDf$Agg_Crime_Rate <- 0
+#calculate neighborhood crime rates per 1000 persons
+aggdistinctNeighborhoodDf$Agg_Crime_Rate <- aggdistinctNeighborhoodDf$neighborhoodAggCrimeCount / (aggdistinctNeighborhoodDf$pop) * 1000
+
+#subset just neighborhood and crime rate factors into a separate df
+myAggVars <- c("GNOCDC_LAB", "Agg_Crime_Rate")
+neighborhoodAggRateDf <- aggdistinctNeighborhoodDf[myAggVars]
+
+#find and save the aggravated crime rate for French Quarter (will be denom)
+FQAggRateDf <- neighborhoodAggRateDf %>% filter (neighborhoodAggRateDf$GNOCDC_LAB == "FRENCH QUARTER") 
+FQAggRate <- FQAggRateDf$Agg_Crime_Rate
+
+neighborhoodAggRateDf$AggRateRatio <- neighborhoodAggRateDf$Agg_Crime_Rate / FQAggRate
+aggRatioCols <- c("GNOCDC_LAB", "AggRateRatio")
+
+#Calculates the rate ratio for each neighborhood for all unique “aggravated crimes” treating FRENCH QUARTER as the reference"
+agg_rate_ratio_all_fq <- neighborhoodAggRateDf[aggRatioCols]
+agg_rate_ratio_all_fq
+```
+
+
+```{r}
+#Question 11 -- Domestic Disturbance is the most common cause for a police report to be filed (1521) and theft is the most common charge filed (708). 
+causeTab <- table(distinctDf$Signal_Description)
+
+orderedCauseTab <- sort(causeTab, decreasing=TRUE)
+#orderedCauseTab
+
+#orderedCauseTab #Domestic Disturbance is the most common cause for a police report to be filed. 
+
+chargeDesTab <- table(distinctDf$Charge_Description)
+orderedChargeDesTab <- sort(chargeDesTab, decreasing=TRUE)
+#orderedChargeDesTab # Theft is the most common charge filed (708). 
+```
+
+```{r}
+#QUESTION 12 - calculates domestic disturbance rate for all neighborhoods and outputs this info as a table
+
+dd_df <- distinctDf %>% filter(str_detect(distinctDf$Signal_Description, "DISTURBANCE "))
+
+ddNeighborhoodTab <- table(dd_df$GNOCDC_LAB)
+ddCountDf <- as.data.frame(ddNeighborhoodTab)
+ddCountDf$Var1 <- as.character(ddCountDf$Var1)
+#append the crime count factor from the ddCountDf table to the rest of the data, matching on neighborhood
+ddCountDf <- left_join(dd_df, ddCountDf, by=c("GNOCDC_LAB"= "Var1"))
+names(ddCountDf)[25] <- "neighborhoodDDCrimeCount"
+#only consider each neighborhood once
+ddDistinctDf <- ddCountDf %>%  
+filter(duplicated(ddCountDf$GNOCDC_LAB) ==FALSE)
+
+#calculate neighborhood dd crime rates per 1000 persons
+ddDistinctDf$Domestic_Disturbance_Rate <- ddDistinctDf$neighborhoodDDCrimeCount / (ddDistinctDf$pop) * 1000
+
+#subset just neighborhood and dd rate factors into a separate df
+myddVars <- c("GNOCDC_LAB", "Domestic_Disturbance_Rate")
+neighborhoodDDRateDf <- ddDistinctDf[myddVars]
+
+#Shows neighborhood domestic disturbance rates in a nicely formatted table
+formattable(neighborhoodDDRateDf)
+
+```
+```{r}
+#QUESTION 13 -- linear regression model on neighborhood crime rate by victim age
+
+
+model <- lm(Crime_Rate ~ Victim_Age, data=distinctNeighborhoodDf)
+summary(model)
+
+```
+```{r warning = FALSE, fig.scap = "neighborhoods with lowest crime rates but highest pop, as seen in the plot, are Old Aurora and Audubon"}
+#QUESTION 14 - Old Aurora and Audubon seem to have the worst responsiveness (low crime rate and high pop)
+
+b <- ggplot(distinctNeighborhoodDf, aes(x = Crime_Rate , y = pop))
+b + geom_point(aes(color = "#FC4E07")) +
+  geom_text_repel(aes(label = distinctNeighborhoodDf$GNOCDC_LAB), size = 3)
+
+#neighborhoods with lowest crime rates but highest pop, as seen in the plot, are Old Aurora and Audubon
+```
+```{r}
+#QUESTION 15 - plots a histogram of 10,000 realizations of a Poisson distributed random variable with a lambda of 4.7
+
+poispoints <- rpois(1:10000, lambda = 4.7)
+p <- as.data.frame( poispoints)
+pHist<-ggplot(p, aes(x=poispoints)) + 
+ geom_histogram( color="blue", fill="blue", stat = "bin", bins = 40)
+pHist
+```
+
+```{r}
+#QUESTION 16 -- calculates the mean Sepal length for each of the species of iris 
+
+data(iris)
+
+for (val in distinct(iris, Species)$Species){
+  subsetIris <-iris%>%  
+    filter(iris$Species == val)
+  #print(subsetIris)
+  m <- mean(subsetIris$Sepal.Length)
+  print(str_c(val, ": ", m))
+}
+
+```
+```{r fig.cap = "Scatter Plot of Miles per Gallon by Displacement(cu.in)"}
+#Question 17 creates a scatter plot with different point colors for different # of cylinders with a linear regression line fit
+
+data(mtcars)
+
+ggplot(mtcars, aes(mpg, disp)) + geom_point(aes(colour = as.factor(cyl))) + geom_smooth(method = "lm", se = FALSE , colour = "black")  + guides(colour = guide_legend(override.aes = list(alpha = 1)) , labs(fill = "# of Cylinders"))
+```
+
+
+```{r warning = FALSE}
+#Question 18 -- transforms a vector of continuous data into a vector of z-scores
+
+#create the vector
+v <- c(-4.89, -1.93, -1.11, 3.94, 0.46, -3.85, -0.20, 6.04,
+9.36, 7.26, 4.88, 13.45, -2.93, 6.39, -16.22, -3.24, 6.86, 11.87, 1.81, -2.54)
+
+calculate_z_scores<- function(v) {
+  mu <- mean(v)
+  sd <- sd(v)
+  #convert each element in the vector into its z-score
+  for (x in 0:lengths(v)){
+    v[x] = (v[x] - mu) / sd
+  }
+  v
+}
+#call the function on the vector
+calculate_z_scores(v)
+```
+```{r}
+#Question #20 -- Extra credit, mapping a chorpleth map of rate ratio treating Lake Wood as the reference
+
+#read in shapefile
+shape <- readOGR(dsn ="/Users/olivianye/Downloads/", layer="Neighborhood_Statistical_Areas")
+
+#fortify shape data 
+fortify_shape = fortify(shape, region = "GNOCDC_LAB")
+
+lakewoodRatedf <- as.data.frame(rate_ratio_all_lakewood)
+
+#combine shape data with rate ratio data
+merged_data <- merge(fortify_shape, lakewoodRatedf, by.x = "id", by.y = "GNOCDC_LAB", all.x = TRUE)
+
+map_plot <- merged_data[order(merged_data$order),]
+
+#plot
+plot <- ggplot() + geom_map(data = map_plot, aes(map_id = id, fill = rateRatio), color = "black", 
+    map = merged_data) + expand_limits(x = merged_data$long, y = merged_data$lat) + scale_fill_gradient(name="Rate Ratio", limits=c(0,70), low="white", high="red")+
+  theme_nothing(legend = TRUE)+
+  labs(title="New Orleans Crime Rate Ratio (Reference = Lake Wood)")
+plot
+```
+
+
+```{r}
+#Question #20 -- Extra credit, mapping a chorpleth map of aggravated crime rate ratio treating French Quarter as the reference
+
+
+fq_agg_dat <- as.data.frame(agg_rate_ratio_all_fq)
+
+#combine shape data with agg rate ratio data
+merged_data_fq <- merge(fortify_shape, fq_agg_dat, by.x = "id", by.y = "GNOCDC_LAB", all.x = TRUE)
+
+map_plot_fq <- merged_data_fq[order(merged_data_fq$order),]
+
+#plot
+plot_fq <- ggplot() + geom_map(data = map_plot_fq, aes(map_id = id, fill = AggRateRatio), color = "black", size = .05, 
+    map = merged_data_fq) + expand_limits(x = merged_data_fq$long, y = merged_data_fq$lat) + scale_fill_gradient(name="Aggravated Crime Rate Ratio", limits=c(0,2), low="white", high="red")+
+  theme_nothing(legend = TRUE)+
+  labs(title="New Orleans Aggravated Crime Rate Ratio (Reference = French Quarter)")
+plot_fq
+```
+
+
+

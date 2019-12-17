@@ -31,7 +31,8 @@ library(rgeos)
 # Questions 1-3
 
 df <- read_csv("/Users/olivianye/Downloads/nola_crime_2018.csv")
-#describe(df)
+
+describe(df)
 
 #Question 1: There are 9970 observations in the nola_crime_2018.csv dataset.
 
@@ -53,12 +54,11 @@ irishAggDf
 ```
 
 ```{r}
-#Question 5 -- Out of all neighborhoods, the French Quarter had the highest number of distinct crime reports (670), followed by Little Woods (595).
 
 distinctDf <- df %>% filter(duplicated(df$Item_Number) ==FALSE)
 neighborhoodTab <- table(distinctDf$GNOCDC_LAB)
 ordered <- sort(neighborhoodTab, decreasing=TRUE)
-#ordered
+ordered
 #Question 5: Out of all neighborhoods, the French Quarter had the highest number of distinct crime reports (670), followed by Little Woods (595).
 
 
@@ -74,7 +74,7 @@ countDf$Var1 <- as.character(countDf$Var1)
 #append the crime count factor from the countDf table to the rest of the data, matching on neighborhood
 distinctCountDf <- left_join(distinctDf, countDf, by=c("GNOCDC_LAB"= "Var1"))
 names(distinctCountDf)[25] <- "neighborhoodCrimeCount"
-#distinctCountDf
+distinctCountDf
 
 #only consider each neighborhood once
 distinctNeighborhoodDf <- distinctCountDf %>%  
@@ -83,7 +83,7 @@ filter(duplicated(distinctCountDf$GNOCDC_LAB) ==FALSE)
 #instantiate crime rare column
 distinctNeighborhoodDf$Crime_Rate <- 0
 #calculate neighborhood crime rates per 1000 persons
-distinctNeighborhoodDf$Crime_Rate <- distinctNeighborhoodDf$neighborhoodCrimeCount / (distinctNeighborhoodDf$pop) * 1000
+distinctNeighborhoodDf$Crime_Rate <- distinctNeighborhoodDf$neighborhoodCrimeCount* 1000 / (distinctNeighborhoodDf$pop) 
 
 #subset just neighborhood and crime rate factors into a separate df
 myVars <- c("GNOCDC_LAB", "Crime_Rate")
@@ -99,7 +99,7 @@ formattable(neighborhoodRateDf)
 
 neighborhoodPopVars <- c("GNOCDC_LAB", "pop")
 neighborhoodPop <- distinctNeighborhoodDf[neighborhoodPopVars]
-#neighborhoodPop
+neighborhoodPop
 #popSorted <- neighborhoodPop[order(-pop)]#, decreasing = TRUE)
 popSorted <- sort(neighborhoodPop$pop, decreasing=TRUE)
 popSorted #highest pop is 44947
@@ -188,13 +188,13 @@ agg_rate_ratio_all_fq
 causeTab <- table(distinctDf$Signal_Description)
 
 orderedCauseTab <- sort(causeTab, decreasing=TRUE)
-#orderedCauseTab
+orderedCauseTab
 
 #orderedCauseTab #Domestic Disturbance is the most common cause for a police report to be filed. 
 
 chargeDesTab <- table(distinctDf$Charge_Description)
 orderedChargeDesTab <- sort(chargeDesTab, decreasing=TRUE)
-#orderedChargeDesTab # Theft is the most common charge filed (708). 
+orderedChargeDesTab # Theft is the most common charge filed (708). 
 ```
 
 ```{r}
@@ -213,7 +213,8 @@ ddDistinctDf <- ddCountDf %>%
 filter(duplicated(ddCountDf$GNOCDC_LAB) ==FALSE)
 
 #calculate neighborhood dd crime rates per 1000 persons
-ddDistinctDf$Domestic_Disturbance_Rate <- ddDistinctDf$neighborhoodDDCrimeCount / (ddDistinctDf$pop) * 1000
+ddDistinctDf$Domestic_Disturbance_Rate <- ddDistinctDf$neighborhoodDDCrimeCount / (ddDistinctDf$pop)
+#only rate is requested so not necessary to calculate rate per 1000 persons
 
 #subset just neighborhood and dd rate factors into a separate df
 myddVars <- c("GNOCDC_LAB", "Domestic_Disturbance_Rate")
